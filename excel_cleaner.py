@@ -2,6 +2,8 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import pandas as pd
+import openpyxl
+from openpyxl import load_workbook
 
 os.environ['TK_SILENCE_DEPRECATION'] = '1'
 
@@ -28,7 +30,7 @@ class ExcelColumnClearerGUI:
         lbl_column.pack(pady=10)
 
         # 自定义输入框颜色和背景色
-        self.column_entry = tk.Entry(self.root, width=20, bg="#e0e0e0", fg="white")  # 背景色和前景色
+        self.column_entry = tk.Entry(self.root, width=20, bg="#e0e0e0", fg="black")  # 背景色和前景色
         self.column_entry.pack()
 
         # 执行按钮
@@ -62,27 +64,27 @@ class ExcelColumnClearerGUI:
             messagebox.showerror("错误", f"处理过程中出错：{str(e)}")
 
     def clear_column_in_files(self):
-        # 统计处理的文件数
         processed_files = 0
 
-        # 遍历文件夹中的所有Excel文件
         for root, dirs, files in os.walk(self.folder_path):
             for file in files:
                 if file.endswith(('.xlsx', '.xls')):
                     file_path = os.path.join(root, file)
                     try:
-                        # 读取Excel文件
-                        df = pd.read_excel(file_path)
-
-                        # 检查列号是否有效
-                        if self.column_number > df.shape[1]:
-                            continue
-
-                        # 清空指定列的内容，保留表头（第一行）
-                        df.iloc[0:, self.column_number - 1] = ''
-
-                        # 保存修改后的文件
-                        df.to_excel(file_path, index=False)
+                        # 使用 openpyxl 加载工作簿以保留格式
+                        wb = load_workbook(file_path)
+                        ws = wb.active
+                        
+                        # 获取要清空的列的字母索引
+                        from openpyxl.utils import get_column_letter
+                        col_letter = get_column_letter(self.column_number)
+                        
+                        # 清空指定列的内容（跳过表头）
+                        for row in range(2, ws.max_row + 1):
+                            ws[f'{col_letter}{row}'].value = None
+                            
+                        # 保存文件
+                        wb.save(file_path)
                         processed_files += 1
 
                     except Exception as e:
